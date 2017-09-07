@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<script src="https://code.highcharts.com/highcharts.js"></script>
+	<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<style>
+#main_div{
+	width: 1200px;
+	margin: 0 auto;
+}
+.chart_css{
+	float: left;
+	width: 600px;
+	height: 800px;
+}
+</style>
+<script>
+let input_tenant1, input_tenant2, input_summerTime;
+
+window.addEventListener("load", function(){
+	input_tenant1 = document.getElementById("tenant1");
+	input_tenant2 = document.getElementById("tenant2");
+	input_summerTime = document.getElementById("summerTime");
+}, false);
+
+const prices_summer = [1.63, 2.38, 3.52, 4.61, 5.42, 6.13];
+const prices_nonsummer = [1.63, 2.10, 2.89, 3.79, 4.42, 4.83];
+let summerTime;
+const level_amount = [240, 420, 340, 400, 600, 1000000];
+
+function calculate_power(){
+	let tenant1 = parseInt(input_tenant1.value);
+	let tenant2 = parseInt(input_tenant2.value);
+	summerTime = eval(input_summerTime.value);
+	
+	calculate_single(tenant1 + tenant2);
+	calculate_double(tenant1, tenant2);
+}
+
+function calculate_single(tenant){
+	let tenant_level_amount = [];
+	for(let i=0; i<6; ++i){
+		let rest = calculate_level(tenant, 0, level_amount[i]);
+		tenant_level_amount[i] = tenant - rest[0];
+		tenant = rest[0];
+	}
+	draw_chart('chart_amount_single', '單戶度數計算', ['住戶1'], '用電度數',
+		[{
+			name: '1001~',
+			data: [tenant_level_amount[5]]
+		}, {
+			name: '701~1000',
+			data: [tenant_level_amount[4]]
+		}, {
+			name: '501~700',
+			data: [tenant_level_amount[3]]
+		}, {
+			name: '331~500',
+			data: [tenant_level_amount[2]]
+		}, {
+			name: '121~330',
+			data: [tenant_level_amount[1]]
+		}, {
+			name: '0~120',
+			data: [tenant_level_amount[0]]
+		}]
+	);
+	draw_chart('chart_price_single', '單戶電費計算', ['住戶1'], '用電度數',
+		[{
+			name: '1001~',
+			data: [calculate_price(tenant_level_amount[5],5)]
+		}, {
+			name: '701~1000',
+			data: [calculate_price(tenant_level_amount[4],4)]
+		}, {
+			name: '501~700',
+			data: [calculate_price(tenant_level_amount[3],3)]
+		}, {
+			name: '331~500',
+			data: [calculate_price(tenant_level_amount[2],2)]
+		}, {
+			name: '121~330',
+			data: [calculate_price(tenant_level_amount[1],1)]
+		}, {
+			name: '0~120',
+			data: [calculate_price(tenant_level_amount[0],0)]
+		}]
+	);
+}
+
+function calculate_double(tenant1, tenant2){
+	let tenant1_level_amount = [], tenant2_level_amount = [];
+	for(let i=0; i<6; ++i){
+		let rest = calculate_level(tenant1, tenant2, level_amount[i]);
+		tenant1_level_amount[i] = tenant1 - rest[0];
+		tenant2_level_amount[i] = tenant2 - rest[1];
+		tenant1 = rest[0];
+		tenant2 = rest[1];
+	}
+	draw_chart('chart_amount_double', '雙戶度數分攤計算', ['住戶1', '住戶2'], '用電度數', 
+		[{
+			name: '1001~',
+			data: [tenant1_level_amount[5], tenant2_level_amount[5]]
+		}, {
+			name: '701~1000',
+			data: [tenant1_level_amount[4], tenant2_level_amount[4]]
+		}, {
+			name: '501~700',
+			data: [tenant1_level_amount[3], tenant2_level_amount[3]]
+		}, {
+			name: '331~500',
+			data: [tenant1_level_amount[2], tenant2_level_amount[2]]
+		}, {
+			name: '121~330',
+			data: [tenant1_level_amount[1], tenant2_level_amount[1]]
+		}, {
+			name: '0~120',
+			data: [tenant1_level_amount[0], tenant2_level_amount[0]]
+		}]
+	);
+	draw_chart('chart_price_double', '雙戶電費分攤計算', ['住戶1', '住戶2'], '用電度數', 
+		[{
+			name: '1001~',
+			data: [calculate_price(tenant1_level_amount[5],5), calculate_price(tenant2_level_amount[5],5)]
+		}, {
+			name: '701~1000',
+			data: [calculate_price(tenant1_level_amount[4],4), calculate_price(tenant2_level_amount[4],4)]
+		}, {
+			name: '501~700',
+			data: [calculate_price(tenant1_level_amount[3],3), calculate_price(tenant2_level_amount[3],3)]
+		}, {
+			name: '331~500',
+			data: [calculate_price(tenant1_level_amount[2],2), calculate_price(tenant2_level_amount[2],2)]
+		}, {
+			name: '121~330',
+			data: [calculate_price(tenant1_level_amount[1],1), calculate_price(tenant2_level_amount[1],1)]
+		}, {
+			name: '0~120',
+			data: [calculate_price(tenant1_level_amount[0],0), calculate_price(tenant2_level_amount[0],0)]
+		}]
+	);
+}
+
+function calculate_price(amount, price_index){
+	return amount*prices_summer[price_index]*summerTime + amount*prices_nonsummer[price_index]*(1.0-summerTime);
+}
+
+function calculate_level(tenant1, tenant2, level_amount){
+	if(tenant1 != 0 && tenant2 != 0){
+		level_amount /= 2;
+		if(tenant1 > level_amount && tenant2 > level_amount){
+			return [tenant1 - level_amount, tenant2 - level_amount];
+		}
+		else if(tenant1 <= level_amount && tenant2 > level_amount){
+			return [0, tenant2 - level_amount - level_amount + tenant1];
+		}
+		else if(tenant1 > level_amount && tenant2 <= level_amount){
+			return [tenant1 - level_amount - level_amount + tenant2, 0];
+		}
+		else if(tenant1 <= level_amount && tenant2 <= level_amount){
+			return [0, 0];
+		}
+	}
+	else{
+		if(tenant1 == 0){
+			if(tenant2 > level_amount){
+				return [0, tenant2 - level_amount];
+			}
+			else if(tenant2 <= level_amount){
+				return [0, 0];
+			}
+		}
+		else if(tenant2 == 0){
+			if(tenant1 > level_amount){
+				return [tenant1 - level_amount, 0];
+			}
+			else if(tenant1 <= level_amount){
+				return [0, 0];
+			}
+		}
+	}
+}
+
+function draw_chart(div_id, title_text, xAxis_array, yAxis_text, chart_data){
+	Highcharts.chart(div_id, {
+		chart: {
+			type: 'column'
+		},
+		title: {
+			text: title_text
+		},
+		xAxis: {
+			categories: xAxis_array
+		},
+		yAxis: {
+			min: 0,
+			title: {
+				text: yAxis_text
+			},
+			stackLabels: {
+				enabled: true,
+				style: {
+					fontWeight: 'bold',
+					color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
+				}
+			}
+		},
+		legend: {
+			align: 'right',
+			x: -30,
+			verticalAlign: 'top',
+			y: 25,
+			floating: true,
+			backgroundColor: (Highcharts.theme && Highcharts.theme.background2) || 'white',
+			borderColor: '#CCC',
+			borderWidth: 1,
+			shadow: false
+		},
+		tooltip: {
+			headerFormat: '<b>{point.x}</b><br/>',
+			pointFormat: '{series.name}: {point.y}<br/>Total: {point.stackTotal}'
+		},
+		plotOptions: {
+			column: {
+				stacking: 'normal',
+				dataLabels: {
+					enabled: true,
+					color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white'
+				}
+			}
+		},
+		series: chart_data
+	});
+}
+</script>
+</head>
+<body>
+	<div id="main_div">
+		<div>
+			<label>房客1用電度數：<input type="text" id="tenant1" value="998"></label>，
+			<label>房客2用電度數：<input type="text" id="tenant2" value="932"></label>，
+			<label title="就是夏月電費佔了多少百分比，因為在6~9月的電費不完全都是按照夏月電費計算，因此在電費單上的電費計算式中會有個小括弧寫著一個分數，代表夏月在這張電費單佔了多少百分比，請填入分數在此格。若是在冬天之類的時間完全不是夏月電費，就填入0。若你想試試看完全依照夏月電費會是什麼結果，就填入1。不過通常你會需要用到這個網頁應該都是夏月啦。">夏月時間百分比：<input type="text" id="summerTime" value="55/62"></label>
+			<input type="button" value="計算！" onclick="calculate_power()">
+		</div>
+		<br>
+		<div><a href="http://www.taipower.com.tw/UpFile/_userfiles/file/%E5%96%AE%E5%BC%B5%E9%9B%BB%E5%83%B9%E8%A1%A8(%E4%B8%AD%E6%96%87).pdf" target="_blank">台電電價表</a></div>
+		<div>
+			<div id="chart_amount_single" class="chart_css"></div>
+			<div id="chart_amount_double" class="chart_css"></div>
+			<div id="chart_price_single" class="chart_css"></div>
+			<div id="chart_price_double" class="chart_css"></div>
+		</div>
+		<div>此網頁設計給1920*1080螢幕大小使用</div>
+	</div>
+</body>
+</html>
