@@ -1,2 +1,2 @@
 # powercalculator
-Calculate power price in Taiwan
+Calculate electricity cost in Taiwan
